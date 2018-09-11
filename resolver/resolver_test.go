@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	path "github.com/ipfs/go-path"
-	"github.com/ipfs/go-path/resolver"
+	path "github.com/dms3-fs/go-path"
+	"github.com/dms3-fs/go-path/resolver"
 
-	ipld "github.com/ipfs/go-ipld-format"
-	merkledag "github.com/ipfs/go-merkledag"
-	dagmock "github.com/ipfs/go-merkledag/test"
+	dms3ld "github.com/dms3-fs/go-ld-format"
+	merkledag "github.com/dms3-fs/go-merkledag"
+	dagmock "github.com/dms3-fs/go-merkledag/test"
 )
 
 func randNode() *merkledag.ProtoNode {
@@ -41,7 +41,7 @@ func TestRecurivePathResolution(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, n := range []ipld.Node{a, b, c} {
+	for _, n := range []dms3ld.Node{a, b, c} {
 		err = dagService.Add(ctx, n)
 		if err != nil {
 			t.Fatal(err)
@@ -51,7 +51,7 @@ func TestRecurivePathResolution(t *testing.T) {
 	aKey := a.Cid()
 
 	segments := []string{aKey.String(), "child", "grandchild"}
-	p, err := path.FromSegments("/ipfs/", segments...)
+	p, err := path.FromSegments("/dms3fs/", segments...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestRecurivePathResolution(t *testing.T) {
 			p.String(), rCid.String(), cKey.String()))
 	}
 
-	p2, err := path.FromSegments("/ipfs/", aKey.String())
+	p2, err := path.FromSegments("/dms3fs/", aKey.String())
 	if err != nil {
 		t.Fatal(err)
 	}

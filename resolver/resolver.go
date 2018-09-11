@@ -1,4 +1,4 @@
-// Package resolver implements utilities for resolving paths within ipfs.
+// Package resolver implements utilities for resolving paths within dms3fs.
 package resolver
 
 import (
@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"time"
 
-	path "github.com/ipfs/go-path"
+	path "github.com/dms3-fs/go-path"
 
-	cid "github.com/ipfs/go-cid"
-	ipld "github.com/ipfs/go-ipld-format"
-	logging "github.com/ipfs/go-log"
-	dag "github.com/ipfs/go-merkledag"
+	cid "github.com/dms3-fs/go-cid"
+	dms3ld "github.com/dms3-fs/go-ld-format"
+	logging "github.com/dms3-fs/go-log"
+	dag "github.com/dms3-fs/go-merkledag"
 )
 
 var log = logging.Logger("pathresolv")
@@ -35,20 +35,20 @@ func (e ErrNoLink) Error() string {
 }
 
 // ResolveOnce resolves path through a single node
-type ResolveOnce func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error)
+type ResolveOnce func(ctx context.Context, ds dms3ld.NodeGetter, nd dms3ld.Node, names []string) (*dms3ld.Link, []string, error)
 
-// Resolver provides path resolution to IPFS
+// Resolver provides path resolution to DMS3FS
 // It has a pointer to a DAGService, which is uses to resolve nodes.
 // TODO: now that this is more modular, try to unify this code with the
 //       the resolvers in namesys
 type Resolver struct {
-	DAG ipld.NodeGetter
+	DAG dms3ld.NodeGetter
 
 	ResolveOnce ResolveOnce
 }
 
 // NewBasicResolver constructs a new basic resolver.
-func NewBasicResolver(ds ipld.DAGService) *Resolver {
+func NewBasicResolver(ds dms3ld.DAGService) *Resolver {
 	return &Resolver{
 		DAG:         ds,
 		ResolveOnce: ResolveSingle,
@@ -76,7 +76,7 @@ func (r *Resolver) ResolveToLastNode(ctx context.Context, fpath path.Path) (*cid
 		lnk, rest, err := r.ResolveOnce(ctx, r.DAG, nd, p)
 
 		// Note: have to drop the error here as `ResolveOnce` doesn't handle 'leaf'
-		// paths (so e.g. for `echo '{"foo":123}' | ipfs dag put` we wouldn't be
+		// paths (so e.g. for `echo '{"foo":123}' | dms3fs dag put` we wouldn't be
 		// able to resolve `zdpu[...]/foo`)
 		if lnk == nil {
 			break
@@ -108,7 +108,7 @@ func (r *Resolver) ResolveToLastNode(ctx context.Context, fpath path.Path) (*cid
 		return nil, nil, errors.New("path failed to resolve fully")
 	}
 	switch val.(type) {
-	case *ipld.Link:
+	case *dms3ld.Link:
 		return nil, nil, errors.New("inconsistent ResolveOnce / nd.Resolve")
 	default:
 		return nd.Cid(), p, nil
@@ -117,7 +117,7 @@ func (r *Resolver) ResolveToLastNode(ctx context.Context, fpath path.Path) (*cid
 
 // ResolvePath fetches the node for given path. It returns the last item
 // returned by ResolvePathComponents.
-func (r *Resolver) ResolvePath(ctx context.Context, fpath path.Path) (ipld.Node, error) {
+func (r *Resolver) ResolvePath(ctx context.Context, fpath path.Path) (dms3ld.Node, error) {
 	// validate path
 	if err := fpath.IsValid(); err != nil {
 		return nil, err
@@ -132,14 +132,14 @@ func (r *Resolver) ResolvePath(ctx context.Context, fpath path.Path) (ipld.Node,
 
 // ResolveSingle simply resolves one hop of a path through a graph with no
 // extra context (does not opaquely resolve through sharded nodes)
-func ResolveSingle(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
+func ResolveSingle(ctx context.Context, ds dms3ld.NodeGetter, nd dms3ld.Node, names []string) (*dms3ld.Link, []string, error) {
 	return nd.ResolveLink(names)
 }
 
 // ResolvePathComponents fetches the nodes for each segment of the given path.
 // It uses the first path component as a hash (key) of the first node, then
 // resolves all other components walking the links, with ResolveLinks.
-func (r *Resolver) ResolvePathComponents(ctx context.Context, fpath path.Path) ([]ipld.Node, error) {
+func (r *Resolver) ResolvePathComponents(ctx context.Context, fpath path.Path) ([]dms3ld.Node, error) {
 	evt := log.EventBegin(ctx, "resolvePathComponents", logging.LoggableMap{"fpath": fpath})
 	defer evt.Done()
 
@@ -166,11 +166,11 @@ func (r *Resolver) ResolvePathComponents(ctx context.Context, fpath path.Path) (
 //
 // ResolveLinks(nd, []string{"foo", "bar", "baz"})
 // would retrieve "baz" in ("bar" in ("foo" in nd.Links).Links).Links
-func (r *Resolver) ResolveLinks(ctx context.Context, ndd ipld.Node, names []string) ([]ipld.Node, error) {
+func (r *Resolver) ResolveLinks(ctx context.Context, ndd dms3ld.Node, names []string) ([]dms3ld.Node, error) {
 
 	evt := log.EventBegin(ctx, "resolveLinks", logging.LoggableMap{"names": names})
 	defer evt.Done()
-	result := make([]ipld.Node, 0, len(names)+1)
+	result := make([]dms3ld.Node, 0, len(names)+1)
 	result = append(result, ndd)
 	nd := ndd // dup arg workaround
 
